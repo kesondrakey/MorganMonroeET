@@ -37,21 +37,35 @@ MMF[MMF == -9999] <- NA
 
 #Data Type; Most variables are characters
 str(MMF)
+MMF1 <- MMF
 
 #Which Variables do we need to calculate ET?
 #For ET, We need....
-#LE          (W m-2): Latent heat flux
-#TA             (deg C): Air temperature;                       Qing's is Ta
-#PA             (kPa): Atmospheric pressure;                    Qing's is pres
-#USTAR    (m s-1): Friction velocity;                           Qing's is ustar
-#H           (W m-2): Sensible heat flux
-#NETRAD       (W m-2): Net radiation;                           Qing's is Rn
-#VPD        (hPa): Vapor Pressure Deficit; 1hpa = 100pa
+#LE             (W m-2): Latent heat flux 
+#TA             (deg C): Air temperature
+#PA             (kPa): Atmospheric pressure
+#USTAR          (m s-1): Friction velocity
+#H              (W m-2): Sensible heat flux
+#NETRAD         (W m-2): Net radiation
+#VPD            (hPa): Vapor Pressure Deficit
 #P              (mm): Precipitation
-#WS            (m s-1): Wind speed (m/s) (meters per second);    Qing's is u
-#Qing's data for wind speed (U) is W/m2 (Watt Per Square Metre); Penman Monteith equation needs windspeed in m/s so will leave as is.
+#WS             (m s-1): Wind speed
 
-#Morgan Monroe Data:
+#Change data from character to numeric for relevant variables
+MMF1$LE <- as.numeric(MMF1$LE_1_1_1)
+
+#error, different types of TA data?
+MMF1$TA <- as.numeric(MMF1$Ta)
+
+
+MMF1$PA <- as.numeric(MMF1$PA)
+MMF1$USTAR <- as.numeric(MMF1$USTAR)
+MMF1$H <- as.numeric(MMF1$H)
+MMF1$NETRAD <- as.numeric(MMF1$NETRAD)
+MMF1$VPD <- as.numeric(MMF1$VPD)
+MMF1$P <- as.numeric(MMF1$P)
+MMF1$WS <- as.numeric(MMF1$WS)
+
 
 
 
