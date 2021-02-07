@@ -54,18 +54,63 @@ MMF1 <- MMF
 #Change data from character to numeric for relevant variables
 MMF1$LE <- as.numeric(MMF1$LE_1_1_1)
 
-#error, different types of TA data?
-MMF1$TA <- as.numeric(MMF1$Ta)
+#error, different types of data??? Doing *_1_1_1 for now, not sure which one to use
+MMF1$TA <- as.numeric(MMF1$TA_1_1_1)
+MMF1$PA <- as.numeric(MMF1$PA_1_1_1)
+MMF1$USTAR <- as.numeric(MMF1$USTAR_1_1_1)
+MMF1$H <- as.numeric(MMF1$H_1_1_1)
+MMF1$NETRAD <- as.numeric(MMF1$NETRAD_1_1_1)
+MMF1$VPD <- as.numeric(MMF1$VPD_PI_1_1_1) #Not sure what VPD_PI is... 
+MMF1$P <- as.numeric(MMF1$P_1_1_1)
+MMF1$WS <- as.numeric(MMF1$WS_1_1_1)
+
+##add column for start_year and start_month; will use this for now
+MMF1[, "Start_Year"] <- format(MMF1[,"TIMESTAMP_START"], "%Y")
+MMF1[, "Start_Month"] <- format(MMF1[,"TIMESTAMP_START"], "%m")
+##add column for end_year and end_month
+MMF1[, "End_Year"] <- format(MMF1[,"TIMESTAMP_END"], "%Y")
+MMF1[, "End_Month"] <- format(MMF1[,"TIMESTAMP_END"], "%m")
+head(MMF1) #works
+
+#add columns for weeks
+##add column for start week year and week ID for each year
+#Data starts on 01-01-1999 starts on a Friday; not sure how to fix this yet 
+
+MMF1[, "Start_Week_Year"] <- format(MMF1[,"TIMESTAMP_START"], "%G")
+MMF1[, "Start_weekID"] <- format(MMF1[,"TIMESTAMP_START"], "%V")
+
+MMF2 <- MMF1
+
+#Begin averaging
+library("ggplot2")
+library("dplyr")
+library("raster")
+library ("lubridate")
+library("rgdal")
+library("tidyverse")
+
+#mean function
+mean_na <- function(x) {
+  mean(x,na.rm=T)
+}
 
 
-MMF1$PA <- as.numeric(MMF1$PA)
-MMF1$USTAR <- as.numeric(MMF1$USTAR)
-MMF1$H <- as.numeric(MMF1$H)
-MMF1$NETRAD <- as.numeric(MMF1$NETRAD)
-MMF1$VPD <- as.numeric(MMF1$VPD)
-MMF1$P <- as.numeric(MMF1$P)
-MMF1$WS <- as.numeric(MMF1$WS)
+###These functions aren't working ######
 
+#more than 50 warnings? doesnt work
+MMFYear <- MMF2 %>% group_by(Start_Year) %>%       
+  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
 
+head(MMFYear)
 
+#mean by month
+MMFMonth <-MMF2 %>% group_by(Start_Month) %>%       
+  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
 
+head(MMFMonth)
+
+#mean by week - average each numbers week for ALL years
+MMFWeek <- MMF2 %>% group_by(Start_weekID) %>%       
+  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
+
+head(MMFWeek)
