@@ -1,4 +1,48 @@
-#Calculate ET From Ameriflux Data
+#Ameriflux Data
+#Calculate ET From Ameriflux Data (https://ameriflux.lbl.gov/sites/siteinfo/US-mms) 
+#Packages: Raster, GDal
+#install.packages("raster")
+#install.packages("rgdal")
+#install.packages("lubridate")
+#install.packages("ggplot2")
+#install.packages("dplyr")
+
+library("ggplot2")
+library("dplyr")
+library("raster")
+library ("lubridate")
+library("rgdal")
+library("tidyverse")
+
+#Step 1. Open Data
+
+AMF_US.MMS_BASE_HR_18.5 <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US-MMS_BASE-BADM_18-5/AMF_US-MMS_BASE_HR_18-5.csv", comment.char="#")
+setwd("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/")
+AMF_USMMS1 <- AMF_US.MMS_BASE_HR_18.5
+
+head(AMF_USMMS1)
+
+#Step 2. Clean up the data
+#Fix Time issues
+
+#Time looks like 199901010000 (YYYYMMDDHHMM) under TIMESTAMP_START/TIMESTAMP_END
+#Turn YYYYMMDDHHMM into YYYYMMDD
+AMF_USMMS1$TIMESTAMP_START <- as.Date(as.character(AMF_USMMS1$TIMESTAMP_START), format="%Y%m%d")
+AMF_USMMS1$TIMESTAMP_END <- as.Date(as.character(AMF_USMMS1$TIMESTAMP_END), format = "%Y%m%d")
+
+#Turn -9999 into NAs
+AMF_USMMS1[AMF_USMMS1 == -9999] <- NA
+
+##add column for start_year and start_month; will use this for now
+AMF_USMMS1[, "Start_Year"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%Y")
+AMF_USMMS1[, "Start_Month"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%m")
+
+##add column for end_year and end_month
+AMF_USMMS1[, "End_Year"] <- format(AMF_USMMS1[,"TIMESTAMP_END"], "%Y")
+AMF_USMMS1[, "End_Month"] <- format(AMF_USMMS1[,"TIMESTAMP_END"], "%m")
+
+#Check if it worked; it did
+head(AMF_USMMS1)
 
 
 
@@ -25,10 +69,7 @@
 
 
 
-
-
-
-
+#FluxNet 2015 DATA
 #Goal: Calculate ET from FluxNet 2015 Data using the Penman Monteith Method
 
 #step One
