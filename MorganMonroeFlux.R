@@ -1,3 +1,4 @@
+#this is for AmeriFlux Data
 #Overall Goal: Calculate ET for the Morgan Monroe Flux Tower; Later goal: Forecast ET with weather forecast data
 
 #Step 1
@@ -95,22 +96,45 @@ mean_na <- function(x) {
 }
 
 
-###These functions aren't working ######
+#Weekly Average for each week and each year
 
-#more than 50 warnings? doesnt work
-MMFYear <- MMF2 %>% group_by(Start_Year) %>%       
-  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
 
-head(MMFYear)
+WeeklyAverage_AllYears <- MMF2 %>% group_by(Start_Week_Year, Start_weekID) %>%
+  summarise_if(is.numeric,mean,na.rm=TRUE)
 
-#mean by month
-MMFMonth <-MMF2 %>% group_by(Start_Month) %>%       
-  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
+View(WeeklyAverage_AllYears)
 
-head(MMFMonth)
 
-#mean by week - average each numbers week for ALL years
-MMFWeek <- MMF2 %>% group_by(Start_weekID) %>%       
-  summarise_at(.vars = names(.)[1:50],.funs = mean,na.rm=TRUE)
+#if we need to filter year... something like this will work
 
-head(MMFWeek)
+#Year_2000 <- DATA5 %>% filter(start_week_year == "2000")
+#all things are characters
+#Year_2000$start_weekID <- as.numeric(Year_2000$start_weekID)
+
+
+###Begin ET Calculation Here###
+
+
+###1 Get the data frame from flux tower site used for Gs calculation. 
+#read weekly averaged US-MMS flux data. calculated from FLUXNET 2015
+#We will use "WeeklyAverage_AllYears"
+
+
+##1.2 make the data frame
+##Tem is degree C (not be used in PM-PET calculation)
+df_PM <- data.frame(Lat = df_USMMS$Lat, Year = df_USMMS$Year, Month = df_USMMS$Month, WeekID = df_USMMS$WeekID) 
+df_PM$TIMESTAMP_START <- df_USMMS$TIMESTAMP_START
+df_PM$Tem <- df_USMMS$TA_F #temperature in degree C
+df_PM$Pre <- df_USMMS$P_F * 7 * 0.0394 #Precipitation inch/7day
+df_PM$LE <- df_USMMS$LE_F_MDS # w/m2 Latent heat flux, gapfilled using MDS method
+df_PM$LE[df_PM$LE <0] <- 0 #PET is zero
+df_PM$sw_in <- df_USMMS$SW_IN_F #incoming shortwave radiation
+df_PM$sw_out <- df_USMMS$SW_OUT #outgoing shortwave radiation
+df_PM$lw_out <- df_USMMS$LW_OUT #outgoing longwave radiation
+df_PM$lw_in <- df_USMMS$LW_IN_F #incoming longwave radiation
+df_PM$ustar <- df_USMMS$USTAR #Friction velocity
+df_PM$Hs <- df_USMMS$H_F_MDS #Sensible heat flux, gapfilled using MDS method
+df_PM$U <- df_USMMS$WS_F #Wind speed, consolidated from WS and WS_ERA
+#Rn is the difference between the incoming net shortwave (Rns) and the net outgoing longwave (Rnl)
+df_PM$Rn <- (df_PM$sw_in - df_PM$sw_out) - (df_PM$lw_out - df_PM$lw_in)  #net short radiation - net long radiation
+df_PM$VPD <- df_USMMS$VPD_F * 0.1 #from hPa to Kpa #Vapor Pressure Deficit consolidated from VPD_F_MDS and VPD_ERA
