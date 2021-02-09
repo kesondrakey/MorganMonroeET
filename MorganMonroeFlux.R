@@ -149,7 +149,8 @@ df_PM$Gs <- Gs
 #VPD kpa
 #Lv J/kg
 #w/m^2 = 1 J/m^2/s= 0.0864*10^6/(24*60*60) J m-2 s-1
-##1.8 Peman-Monteith PET calculation
+
+#Peman-Monteith PET calculation
 dfref <- df_PM[abs(df_PM$VPD - 1) < 0.05,]
 if (nrow(dfref) == 0) {
   print("check condition setting,no data at VPD~1kpa")
@@ -166,13 +167,13 @@ df_PM$PETpm_mmday <- PETpm_mmday #P-M PET mm/day
 PETpm_inweek <- PETpm_mmday * 7 * 0.03937 
 df_PM$PETpm_inweek <- PETpm_inweek #P-M PET inch/week
 
-##1.9 Prestley-Tylor PET
+#Prestley-Tylor PET
 PETpt_mmday <- 1.26 * delta*df_PM$Rn / (Lv * (delta + gamma)) * 86400
 df_PM$PETpt_mmday <- PETpt_mmday # Priestley-Taylor PET mm/day
 PETpt_inweek <- PETpt_mmday * 7 * 0.03937
 df_PM$PETpt_inweek <- PETpt_inweek # Priestley-Taylor PET inch/week
 
-##1.10 calculate Penman-Monteith ET
+#Calculate Penman-Monteith ET
 ETpm_mmday <- 86400 * (delta*df_PM$Rn + rho_a*cp*ga*df_PM$VPD) / (( delta + gamma*(1+(ga/Gs))) * Lv)
 ETpm_inweek <- ETpm_mmday * 7 * 0.03937 #inch/week
 df_PM$ETpm_mmday <- ETpm_mmday
@@ -180,3 +181,29 @@ df_PM$ETpm_inweek <- ETpm_inweek
 
 #Save Dataframe
 write.csv(df_PM,file = "D:/Research/R_Files/Morgan_Monroe_Flux_Tower/FluxNet_US_MMS/US_MMS_ET.csv",row.names = FALSE)
+
+US_MMS_ET <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/FluxNet_US_MMS/US_MMS_ET.csv")
+
+#Step 5
+#graph it!
+
+library(ggplot2)
+ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
+  geom_line() +
+  labs(title = "ET Weekly Averages from 1990-2020",
+       x = "Month",
+       y = "ET Averaged (in/wk)")
+
+
+library(ggplot2)
+library(scales)
+ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
+  geom_line(color = "indianred3", 
+            size=1 ) +
+  geom_smooth() +
+  labs(title = "US-MMS ET Weekly Averages",
+       subtitle = "1990 to 2020",
+       x = "Month",
+       y = "ET Averaged (in/wk)") +
+  theme_minimal()
+
