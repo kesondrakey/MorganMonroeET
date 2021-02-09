@@ -1,3 +1,34 @@
+#Calculate ET From Ameriflux Data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #Goal: Calculate ET from FluxNet 2015 Data using the Penman Monteith Method
 
 #step One
@@ -222,7 +253,7 @@ View(YearlyETAverages1)
 # Approach 2:
 library(ggfortify)
 library(reshape2)
-axisyears <- c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014")       
+#axisyears <- c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014")       
 
 ggplot(YearlyETAverages1) + geom_line(aes(x=Year, y=ETpm_inweek, color="ETpm_inweek")) + 
   geom_line(aes(x=Year, y=VPD, col="VPD")) + 
