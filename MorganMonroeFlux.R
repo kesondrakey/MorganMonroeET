@@ -36,6 +36,8 @@ AMF_USMMS1[AMF_USMMS1 == -9999] <- NA
 ##add column for start_year and start_month; will use this for now
 AMF_USMMS1[, "Start_Year"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%Y")
 AMF_USMMS1[, "Start_Month"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%m")
+AMF_USMMS1[, "Start_Day"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%d")
+
 
 ##add column for end_year and end_month
 AMF_USMMS1[, "End_Year"] <- format(AMF_USMMS1[,"TIMESTAMP_END"], "%Y")
@@ -44,16 +46,53 @@ AMF_USMMS1[, "End_Month"] <- format(AMF_USMMS1[,"TIMESTAMP_END"], "%m")
 #Check if it worked; it did
 head(AMF_USMMS1)
 
+#add columns for weeks
+##add column for start week year and week ID for each year
+#Data starts on 01-01-1999 starts on a Friday; not sure how to fix this yet ####
 
+AMF_USMMS1[, "Start_Week_Year"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%G")
+AMF_USMMS1[, "Start_weekID"] <- format(AMF_USMMS1[,"TIMESTAMP_START"], "%V")
 
+#Set Latitude
+#latitude for US-MMS is 39.3232 (info found here: https://ameriflux.lbl.gov/sites/siteinfo/US-MMS) 
+lat <- 39.3232
+AMF_USMMS1$lat <- lat
 
+AMF_USMMS <- AMF_USMMS1
 
+head(AMF_USMMS)
 
+#Take the weekly averages of each variable for each year
+WeeklyAMF_USMMS <- AMF_USMMS %>% group_by(Start_Week_Year, Start_weekID) %>%
+  summarise_if(is.numeric,mean,na.rm=TRUE)
 
+View(WeeklyAMF_USMMS)
+#includes 1998 since 01-01-1999 and 01-02-1999 are a friday and saturday
+str(WeeklyAMF_USMMS)
 
+#Step 3. Calculate ET; Ameriflux variables are explained here: (https://ameriflux.lbl.gov/data/aboutdata/data-variables/#base)
+#Our Relevant Data
 
+#LE          (W m-2): Latent heat flux
+#TA             (deg C): Air temperature;             Qing's is Ta
+#PA             (kPa): Atmospheric pressure;          Qing's is pres
+#USTAR    (m s-1): Friction velocity;                 Qing's is ustar
+#H           (W m-2): Sensible heat flux
+#NETRAD       (W m-2): Net radiation;                 Qing's is Rn
+#VPD        (hPa): Vapor Pressure Deficit; 1hpa = 100pa
+#P              (mm): Precipitation
+#WS             (m s-1): Wind speed
 
-
+#For now, we will use _1_1_1 data since I'm not sure which height is the best
+# LE ->       LE_1_1_1
+#TA ->        TA_1_1_1 
+#PA ->        PA_1_1_1
+#USTAR ->     USTAR_1_1_1
+#H ->         H_1_1_1
+#NETRAD ->    NETRAD_1_1_1 
+#VPD ->       VPD_PI_1_1_1; *For all files with processing version 1, VPD_PI is provided in the units kPa (instead of hPa) (https://ameriflux.lbl.gov/data/data-change-log/) ### I'm unsure what level processing this data has, hmm. 
+#P ->         P_1_1_1
+#WS ->        WS_1_1_1 
 
 
 
