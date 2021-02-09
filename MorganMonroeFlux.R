@@ -1,47 +1,54 @@
-#this is for AmeriFlux Data
-#Overall Goal: Calculate ET for the Morgan Monroe Flux Tower; Later goal: Forecast ET with weather forecast data
+#Goal: Calculate ET from FluxNet 2015 Data using the Penman Monteith Method
 
-#Step 1
-#Open Data File for the US-MMS Flux Tower (https://ameriflux.lbl.gov/sites/siteinfo/US-MMS)
-setwd("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US-MMS_BASE-BADM_18-5")
-AMF_US.MMS_BASE_HR_18.5 <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US-MMS_BASE-BADM_18-5/AMF_US-MMS_BASE_HR_18-5.csv", header=FALSE, comment.char="#")
+#step One
+#Open Files
+#Set directory and read in Fluxnet data (from FLUXNET 2015) for weekly averages for US-MMS Site (https://fluxnet.org/data/download-data/)
+setwd("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/FluxNet_US_MMS/")
+dfUSMMS <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/FluxNet_US_MMS/FLX_US-MMS_FLUXNET2015_FULLSET_1999-2014_1-4/Weekly/FLX_US-MMS_FLUXNET2015_FULLSET_WW_1999-2014_1-4.csv")
+library(data.table)
 
-MMF <- AMF_US.MMS_BASE_HR_18.5
-
-
-#Fix Header
-#read only the first row from the table
-NAMES <- read.table("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US-MMS_BASE-BADM_18-5/AMF_US-MMS_BASE_HR_18-5.csv", nrow = 1, stringsAsFactors = FALSE, sep = ",")
-#skip the first row in the table
-DATA <- read.table("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US-MMS_BASE-BADM_18-5/AMF_US-MMS_BASE_HR_18-5.csv", skip = 1, stringsAsFactors = FALSE, sep = ",")
-#combine them
-names(DATA) <- NAMES
-#check
-head(DATA)
-#data shows a double header, remove first row
-DATA <- DATA[- 1, ] 
-head(DATA)
-
-#Clone data
-MMF <- DATA
+#Step Two
+#Clean up the Data
 
 #Fix Time issues
 #Time looks like 199901010000 (YYYYMMDDHHMM) under TIMESTAMP_START/TIMESTAMP_END
 #Turn YYYYMMDDHHMM into YYYYMMDD
-MMF$TIMESTAMP_START <- as.Date(as.character(MMF$TIMESTAMP_START), format="%Y%m%d")
-MMF$TIMESTAMP_END <- as.Date(as.character(MMF$TIMESTAMP_END), format = "%Y%m%d")
-
-head(MMF)
+dfUSMMS$TIMESTAMP_START <- as.Date(as.character(dfUSMMS$TIMESTAMP_START), format="%Y%m%d")
+dfUSMMS$TIMESTAMP_END <- as.Date(as.character(dfUSMMS$TIMESTAMP_END), format = "%Y%m%d")
 
 #Turn -9999 into NAs
-MMF[MMF == -9999] <- NA
+dfUSMMS[dfUSMMS == -9999] <- NA
 
-#Data Type; Most variables are characters
-str(MMF)
-MMF1 <- MMF
+##add column for start_year and start_month; will use this for now
+dfUSMMS[, "Start_Year"] <- format(dfUSMMS[,"TIMESTAMP_START"], "%Y")
+dfUSMMS[, "Start_Month"] <- format(dfUSMMS[,"TIMESTAMP_START"], "%m")
 
-#Which Variables do we need to calculate ET?
-#For ET, We need....
+##add column for end_year and end_month
+dfUSMMS[, "End_Year"] <- format(dfUSMMS[,"TIMESTAMP_END"], "%Y")
+dfUSMMS[, "End_Month"] <- format(dfUSMMS[,"TIMESTAMP_END"], "%m")
+
+#Check if it worked; it did
+head(dfUSMMS)
+
+#add columns for weeks
+##add column for start week year and week ID for each year
+#Data starts on 01-01-1999 starts on a Friday; not sure how to fix this yet ####
+
+dfUSMMS[, "Start_Week_Year"] <- format(dfUSMMS[,"TIMESTAMP_START"], "%G")
+dfUSMMS[, "Start_weekID"] <- format(dfUSMMS[,"TIMESTAMP_START"], "%V")
+
+#Set Latitude
+#latitude for US-MMS is 39.3232 (info found here: https://ameriflux.lbl.gov/sites/siteinfo/US-MMS) 
+lat <- 39.3232
+dfUSMMS$lat <- lat
+
+df_USMMS <- dfUSMMS
+
+
+#Step 3
+#Make the Dataframe
+
+#To calculate ET, We need....
 #LE             (W m-2): Latent heat flux 
 #TA             (deg C): Air temperature
 #PA             (kPa): Atmospheric pressure
@@ -52,89 +59,124 @@ MMF1 <- MMF
 #P              (mm): Precipitation
 #WS             (m s-1): Wind speed
 
-#Change data from character to numeric for relevant variables
-MMF1$LE <- as.numeric(MMF1$LE_1_1_1)
+#Variables from the data
+#will Use start year, month, and weekIDs for ET calculations; please correct if this is wrong
+df_PM <- data.frame(Lat = df_USMMS$lat, Year = df_USMMS$Start_Week_Year, Month = df_USMMS$Start_Month, WeekID = df_USMMS$Start_weekID) 
 
-#error, different types of data??? Doing *_1_1_1 for now, not sure which one to use
-MMF1$TA <- as.numeric(MMF1$TA_1_1_1)
-MMF1$PA <- as.numeric(MMF1$PA_1_1_1)
-MMF1$USTAR <- as.numeric(MMF1$USTAR_1_1_1)
-MMF1$H <- as.numeric(MMF1$H_1_1_1)
-MMF1$NETRAD <- as.numeric(MMF1$NETRAD_1_1_1)
-MMF1$VPD <- as.numeric(MMF1$VPD_PI_1_1_1) #Not sure what VPD_PI is... 
-MMF1$P <- as.numeric(MMF1$P_1_1_1)
-MMF1$WS <- as.numeric(MMF1$WS_1_1_1)
+#We will use the start dates for time
+df_PM$TIMESTAMP_START <- df_USMMS$TIMESTAMP_START
+#LE             (W m-2): Latent heat flux 
+df_PM$LE <- df_USMMS$LE_F_MDS # w/m2 Latent heat flux, gapfilled using MDS method
+df_PM$LE[df_PM$LE <0] <- 0 #PET is zero
+#TA             (deg C): Air temperature
+df_PM$Tem <- df_USMMS$TA_F #temperature in degree C
+#USTAR          (m s-1): Friction velocity
+df_PM$ustar <- df_USMMS$USTAR #Friction velocity
+#H              (W m-2): Sensible heat flux
+df_PM$Hs <- df_USMMS$H_F_MDS #Sensible heat flux, gapfilled using MDS method
+#NETRAD         (W m-2): Net radiation
+df_PM$Rn <- df_USMMS$NETRAD  #net radiation
+#VPD            (hPa): Vapor Pressure Deficit
+df_PM$VPD <- df_USMMS$VPD_F * 0.1 #from hPa to Kpa #Vapor Pressure Deficit consolidated from VPD_F_MDS and VPD_ERA
+#P              (mm): Precipitation
+df_PM$Pre <- df_USMMS$P_F * 7 * 0.0394 #Precipitation inch/7day
+#WS             (m s-1): Wind speed
+df_PM$U <- df_USMMS$WS_F #Wind speed, consolidated from WS and WS_ERA
 
-##add column for start_year and start_month; will use this for now
-MMF1[, "Start_Year"] <- format(MMF1[,"TIMESTAMP_START"], "%Y")
-MMF1[, "Start_Month"] <- format(MMF1[,"TIMESTAMP_START"], "%m")
-##add column for end_year and end_month
-MMF1[, "End_Year"] <- format(MMF1[,"TIMESTAMP_END"], "%Y")
-MMF1[, "End_Month"] <- format(MMF1[,"TIMESTAMP_END"], "%m")
-head(MMF1) #works
+#Constants
+Elev <- 275 #in m, elevation data for air pressure calculation
+zm <- 46 #(measurement height for wind speed and humidity)
+h <- 27 #canopy height
+zd <- 2/3 * h #zd is zero plane displacement height 
+zo <- 0.1 * h #roughness length governing momentum transfer and governing transfer of heat and vapour 
 
-#add columns for weeks
-##add column for start week year and week ID for each year
-#Data starts on 01-01-1999 starts on a Friday; not sure how to fix this yet 
 
-MMF1[, "Start_Week_Year"] <- format(MMF1[,"TIMESTAMP_START"], "%G")
-MMF1[, "Start_weekID"] <- format(MMF1[,"TIMESTAMP_START"], "%V")
+#Step 4
+#Calculate ET
 
-MMF2 <- MMF1
+#Convert LE to ET
+Lv <- 2.500 * 10^6 - 2.386 *10^3*df_PM$Tem  #J/kg   #this is the latent heat of vaporization, Allen 1998 2.45 MJ/m^3
+ETlv_mmday <- 86400 * df_PM$LE / Lv #kg/m2/s = 86400mm/day ET calculated directly from LE
+ETlv_inweek <- ETlv_mmday * 7 * 0.03937 #inch/week, 7 days a week
+df_PM$ETlv_mmday <- ETlv_mmday
+df_PM$ETlv_inweek <- ETlv_inweek 
 
-#Begin averaging
-library("ggplot2")
-library("dplyr")
-library("raster")
-library ("lubridate")
-library("rgdal")
-library("tidyverse")
+#Define Constants for ET calculation
+#define some constants necessary for the Penman-Monteith Equation, a few of which depend on temperature
+cp <- 1006 #specific heat capacity of dry air, J/kg/?C.  Cp = 1.013 10-3 [MJ kg-1 ?C-1]
+rho_w <- 1000 #density of water, kg/m^3
+k <- 0.4 #von Karman constant, unitless
+rho_a <- 101.3*10^3/(287.058) /(df_PM$Tem+273.15) #density of dry air kg/m^3  #287.058 ideal gas law: dry air density = P/ (specific gas constant * Tk) 
+#S <- 2508/(df_PM$Tem+237.3)^2 * exp(17.3*df_PM$Tem/(df_PM$Tem+237)) #slope of saturation water vapor function, #kPa/KSTst
+delta <-  4098*0.6108*exp(17.27*df_PM$Tem/(df_PM$Tem+237.3))/(df_PM$Tem+237.3)^2 #slope of saturation water vapor function, #kPa/K 
+pres <- 101.3 * (((293-0.0065*Elev)/293)^5.26)#air pressure, kPa
+gamma <- cp * pres/(0.622*Lv)  #psychrometric constant, kPa/K,cp: 1.013 10-3 [MJ kg-1 ?C-1],
+Ta_K <- df_PM$Tem + 273.15 #air temp in kelvin
+Rho <- (1.3079 - 0.0045*df_PM$Tem)  #density of dry air kg m-3
+Cp <- 1005 #specific heat capacity of air, J/kg/?C
 
-#mean function
-mean_na <- function(x) {
-  mean(x,na.rm=T)
+
+#Correction parameter for ga
+#find the aerodynamic conductance 
+#OL is Monin-Obhukov lengh #stab is the atmospheric stability facture
+#consult SI of Novick et al. 2016 (Nature Climate Change) for details
+eps <- 0.1^6
+OL <- -Rho * (df_PM$ustar + eps)^3 /(0.4*9.81*((df_PM$Hs + eps)/(Cp*Ta_K))) #the ep is a very small number, #which prevents ustart and H from being exactly zero, which mucks up the calculations
+stab <- (zm-2/3*zd) / OL
+psiH <- 6*log(1+stab) #atmospheric stability correction
+if (length(psiH) == length(stab)) {
+  psiH[which(stab <0)] <- -2*log((1+(1-16*stab[which(stab<0)])^0.5)/2)
+} else {
+  print ("check the dataset")
 }
 
 
-#Weekly Average for each week and each year
+#ga (m/s), Gs (m/s) calculation
+#atmospheric stability correction
+ga <- df_PM$U * k^2 /((log((zm-zd)/zo) + psiH)^2) #m/s
 
+#Finally, find the reference surface conductance by inverting the penman monteith equation
+Gs <- gamma*df_PM$LE*ga / ( delta*df_PM$Rn + rho_a*cp*ga*df_PM$VPD - df_PM$LE*(delta+gamma) )                     
+df_PM$Gs <- Gs
+#Gs m/s
+#gamma kPa/K
+#LE W/m2 
+#ga m/s
+#delta kPa/K
+#Rn W/m2
+#rho_a kg/m^3
+#cp j/kg/K  1j/kg/K = 1j/kg/C
+#VPD kpa
+#Lv J/kg
+#w/m^2 = 1 J/m^2/s= 0.0864*10^6/(24*60*60) J m-2 s-1
+##1.8 Peman-Monteith PET calculation
+dfref <- df_PM[abs(df_PM$VPD - 1) < 0.05,]
+if (nrow(dfref) == 0) {
+  print("check condition setting,no data at VPD~1kpa")
+} else {
+  Gsref <- mean(dfref$Gs,na.rm = TRUE)
+}
+df_PM$Gsref <- Gsref
 
-WeeklyAverage_AllYears <- MMF2 %>% group_by(Start_Week_Year, Start_weekID) %>%
-  summarise_if(is.numeric,mean,na.rm=TRUE)
+#daily PET kg/m2/s = 86400mm/day
+PETpm_mmday <- 86400 * ( delta*df_PM$Rn + rho_a*cp*ga*df_PM$VPD ) / (( delta + gamma*(1+(ga/Gsref))) * Lv)                             
+df_PM$PETpm_mmday <- PETpm_mmday #P-M PET mm/day
 
-View(WeeklyAverage_AllYears)
+#weekly PET in inch (1mm = 0.0393701 inch)
+PETpm_inweek <- PETpm_mmday * 7 * 0.03937 
+df_PM$PETpm_inweek <- PETpm_inweek #P-M PET inch/week
 
+##1.9 Prestley-Tylor PET
+PETpt_mmday <- 1.26 * delta*df_PM$Rn / (Lv * (delta + gamma)) * 86400
+df_PM$PETpt_mmday <- PETpt_mmday # Priestley-Taylor PET mm/day
+PETpt_inweek <- PETpt_mmday * 7 * 0.03937
+df_PM$PETpt_inweek <- PETpt_inweek # Priestley-Taylor PET inch/week
 
-#if we need to filter year... something like this will work
+##1.10 calculate Penman-Monteith ET
+ETpm_mmday <- 86400 * (delta*df_PM$Rn + rho_a*cp*ga*df_PM$VPD) / (( delta + gamma*(1+(ga/Gs))) * Lv)
+ETpm_inweek <- ETpm_mmday * 7 * 0.03937 #inch/week
+df_PM$ETpm_mmday <- ETpm_mmday
+df_PM$ETpm_inweek <- ETpm_inweek 
 
-#Year_2000 <- DATA5 %>% filter(start_week_year == "2000")
-#all things are characters
-#Year_2000$start_weekID <- as.numeric(Year_2000$start_weekID)
-
-
-###Begin ET Calculation Here###
-
-
-###1 Get the data frame from flux tower site used for Gs calculation. 
-#read weekly averaged US-MMS flux data. calculated from FLUXNET 2015
-#We will use "WeeklyAverage_AllYears"
-
-
-##1.2 make the data frame
-##Tem is degree C (not be used in PM-PET calculation)
-df_PM <- data.frame(Lat = df_USMMS$Lat, Year = df_USMMS$Year, Month = df_USMMS$Month, WeekID = df_USMMS$WeekID) 
-df_PM$TIMESTAMP_START <- df_USMMS$TIMESTAMP_START
-df_PM$Tem <- df_USMMS$TA_F #temperature in degree C
-df_PM$Pre <- df_USMMS$P_F * 7 * 0.0394 #Precipitation inch/7day
-df_PM$LE <- df_USMMS$LE_F_MDS # w/m2 Latent heat flux, gapfilled using MDS method
-df_PM$LE[df_PM$LE <0] <- 0 #PET is zero
-df_PM$sw_in <- df_USMMS$SW_IN_F #incoming shortwave radiation
-df_PM$sw_out <- df_USMMS$SW_OUT #outgoing shortwave radiation
-df_PM$lw_out <- df_USMMS$LW_OUT #outgoing longwave radiation
-df_PM$lw_in <- df_USMMS$LW_IN_F #incoming longwave radiation
-df_PM$ustar <- df_USMMS$USTAR #Friction velocity
-df_PM$Hs <- df_USMMS$H_F_MDS #Sensible heat flux, gapfilled using MDS method
-df_PM$U <- df_USMMS$WS_F #Wind speed, consolidated from WS and WS_ERA
-#Rn is the difference between the incoming net shortwave (Rns) and the net outgoing longwave (Rnl)
-df_PM$Rn <- (df_PM$sw_in - df_PM$sw_out) - (df_PM$lw_out - df_PM$lw_in)  #net short radiation - net long radiation
-df_PM$VPD <- df_USMMS$VPD_F * 0.1 #from hPa to Kpa #Vapor Pressure Deficit consolidated from VPD_F_MDS and VPD_ERA
+#Save Dataframe
+write.csv(df_PM,file = "D:/Research/R_Files/Morgan_Monroe_Flux_Tower/FluxNet_US_MMS/US_MMS_ET.csv",row.names = FALSE)
