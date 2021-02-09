@@ -62,13 +62,13 @@ AMF_USMMS <- AMF_USMMS1
 
 head(AMF_USMMS)
 
-#Take the weekly averages of each variable for each year
-WeeklyAMF_USMMS <- AMF_USMMS %>% group_by(Start_Week_Year, Start_weekID) %>%
+#Take the weekly averages of each variable for each year and month
+WeeklyAMF_USMMS <- AMF_USMMS %>% group_by(Start_Week_Year, Start_weekID, Start_Month) %>%
   summarise_if(is.numeric,mean,na.rm=TRUE)
-
-View(WeeklyAMF_USMMS)
+head(WeeklyAMF_USMMS)
 #includes 1998 since 01-01-1999 and 01-02-1999 are a friday and saturday
 str(WeeklyAMF_USMMS)
+
 
 #Step 3. Calculate ET; Ameriflux variables are explained here: (https://ameriflux.lbl.gov/data/aboutdata/data-variables/#base)
 #Our Relevant Data
@@ -95,9 +95,42 @@ str(WeeklyAMF_USMMS)
 #WS ->        WS_1_1_1 
 
 
+#Create a Dataframe
+#Add Latitude variable; 39.3232 is the latitude for the US-MMS site (https://ameriflux.lbl.gov/sites/siteinfo/US-MMS#overview)
+lat <- 39.3232
+WeeklyAMF_USMMS$lat <- lat
 
+##Tem is degree C (not be used in PM-PET calculation); no latitude column, latitude for US-bo1 is 40.0062
+df_AMF_USMMS <- data.frame(Lat = WeeklyAMF_USMMS$lat, Year = WeeklyAMF_USMMS$Start_Week_Year, Month = WeeklyAMF_USMMS$Start_Month, WeekID = WeeklyAMF_USMMS$Start_weekID) 
+head(df_AMF_USMMS)
 
+#unsure how to add the timestamp variable back; got an error when I tried
+#We will use the start dates for time
 
+#LE             
+df_AMF_USMMS$LE <- WeeklyAMF_USMMS$LE_1_1_1 # w/m2 Latent heat turbulent flux (no storage correction)
+df_AMF_USMMS$LE[df_AMF_USMMS$LE <0] <- 0 #PET is zero
+
+#TA             (deg C): Air temperature
+df_AMF_USMMS$Tem <- WeeklyAMF_USMMS$TA_1_1_1  #temperature in degree C
+
+#USTAR          (m s-1): Friction velocity
+df_AMF_USMMS$ustar <- WeeklyAMF_USMMS$USTAR_1_1_1 #Friction velocity, m s-1
+
+#H              (W m-2): Sensible heat flux
+df_AMF_USMMS$Hs <- WeeklyAMF_USMMS$H_1_1_1 #Sensible heat turbulent flux (no storage correction); W m-2
+
+#NETRAD         (W m-2): Net radiation
+df_AMF_USMMS$Rn <- WeeklyAMF_USMMS$NETRAD_1_1_1  #net radiation; W m-2
+
+#VPD            (hPa or kpa; check note - assuming kpa for now): Vapor Pressure Deficit                     ##########SEE NOTE#######
+df_AMF_USMMS$VPD <- WeeklyAMF_USMMS$VPD_PI_1_1_1 #* 0.1 #from hPa to Kpa #Vapor Pressure Deficit, hPa; ###For all files with processing version 1, VPD_PI is provided in the units kPa (instead of hPa). I'm not sure which version US-MMS has
+
+#P              (mm): Precipitation
+df_AMF_USMMS$Pre <- WeeklyAMF_USMMS$P_1_1_1 * 7 * 0.0394 #Precipitation inch/7day
+
+#WS             (m s-1): Wind speed
+df_AMF_USMMS$U <- WeeklyAMF_USMMS$WS_1_1_1 #Wind speed
 
 
 
