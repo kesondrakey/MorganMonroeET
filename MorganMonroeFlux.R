@@ -133,6 +133,117 @@ df_AMF_USMMS$Pre <- WeeklyAMF_USMMS$P_1_1_1 * 7 * 0.0394 #Precipitation inch/7da
 df_AMF_USMMS$U <- WeeklyAMF_USMMS$WS_1_1_1 #Wind speed
 
 
+#Constants
+Elev <- 275 #in m, elevation data for air pressure calculation
+zm <- 46 #(measurement height for wind speed and humidity)
+h <- 27 #canopy height
+zd <- 2/3 * h #zd is zero plane displacement height 
+zo <- 0.1 * h #roughness length governing momentum transfer and governing transfer of heat and vapour 
+
+
+
+#Convert LE to ET
+Lv <- 2.500 * 10^6 - 2.386 *10^3*df_AMF_USMMS$Tem  #J/kg   #this is the latent heat of vaporization, Allen 1998 2.45 MJ/m^3
+ETlv_mmday <- 86400 * df_AMF_USMMS$LE / Lv #kg/m2/s = 86400mm/day ET calculated directly from LE
+ETlv_inweek <- ETlv_mmday * 7 * 0.03937 #inch/week, 7 days a week
+df_AMF_USMMS$ETlv_mmday <- ETlv_mmday
+df_AMF_USMMS$ETlv_inweek <- ETlv_inweek 
+
+
+#Define Constants for ET calculation
+#define some constants necessary for the Penman-Monteith Equation, a few of which depend on temperature
+cp <- 1006 #specific heat capacity of dry air, J/kg/?C.  Cp = 1.013 10-3 [MJ kg-1 ?C-1]
+rho_w <- 1000 #density of water, kg/m^3
+k <- 0.4 #von Karman constant, unitless
+rho_a <- 101.3*10^3/(287.058) /(df_AMF_USMMS$Tem+273.15) #density of dry air kg/m^3  #287.058 ideal gas law: dry air density = P/ (specific gas constant * Tk) 
+#S <- 2508/(df_AMF_USMMS$Tem+237.3)^2 * exp(17.3*df_AMF_USMMS$Tem/(df_AMF_USMMSTem+237)) #slope of saturation water vapor function, #kPa/KSTst
+delta <-  4098*0.6108*exp(17.27*df_AMF_USMMS$Tem/(df_AMF_USMMS$Tem+237.3))/(df_AMF_USMMS$Tem+237.3)^2 #slope of saturation water vapor function, #kPa/K 
+pres <- 101.3 * (((293-0.0065*Elev)/293)^5.26)#air pressure, kPa
+gamma <- cp * pres/(0.622*Lv)  #psychrometric constant, kPa/K,cp: 1.013 10-3 [MJ kg-1 ?C-1],
+Ta_K <- df_AMF_USMMS$Tem + 273.15 #air temp in kelvin
+Rho <- (1.3079 - 0.0045*df_AMF_USMMS$Tem)  #density of dry air kg m-3
+Cp <- 1005 #specific heat capacity of air, J/kg/?C
+
+
+#Correction parameter for ga
+#find the aerodynamic conductance 
+#OL is Monin-Obhukov lengh #stab is the atmospheric stability facture
+#consult SI of Novick et al. 2016 (Nature Climate Change) for details
+eps <- 0.1^6
+OL <- -Rho * (df_AMF_USMMS$ustar + eps)^3 /(0.4*9.81*((df_AMF_USMMS$Hs + eps)/(Cp*Ta_K))) #the ep is a very small number, #which prevents ustart and H from being exactly zero, which mucks up the calculations
+stab <- (zm-2/3*zd) / OL
+psiH <- 6*log(1+stab) #atmospheric stability correction
+if (length(psiH) == length(stab)) {
+  psiH[which(stab <0)] <- -2*log((1+(1-16*stab[which(stab<0)])^0.5)/2)
+} else {
+  print ("check the dataset")
+}
+
+
+
+#ga (m/s), Gs (m/s) calculation
+#atmospheric stability correction
+ga <- df_AMF_USMMS$U * k^2 /((log((zm-zd)/zo) + psiH)^2) #m/s
+
+#Finally, find the reference surface conductance by inverting the penman monteith equation
+Gs <- gamma*df_AMF_USMMS$LE*ga / ( delta*df_AMF_USMMS$Rn + rho_a*cp*ga*df_AMF_USMMS$VPD - df_AMF_USMMS$LE*(delta+gamma) )                     
+df_AMF_USMMS$Gs <- Gs
+#Gs m/s
+#gamma kPa/K
+#LE W/m2 
+#ga m/s
+#delta kPa/K
+#Rn W/m2
+#rho_a kg/m^3
+#cp j/kg/K  1j/kg/K = 1j/kg/C
+#VPD kpa
+#Lv J/kg
+#w/m^2 = 1 J/m^2/s= 0.0864*10^6/(24*60*60) J m-2 s-1
+
+#Peman-Monteith PET calculation
+dfref <- df_AMF_USMMS[abs(df_AMF_USMMS$VPD - 1) < 0.05,]
+if (nrow(dfref) == 0) {
+  print("check condition setting,no data at VPD~1kpa")
+} else {
+  Gsref <- mean(dfref$Gs,na.rm = TRUE)
+}
+df_AMF_USMMS$Gsref <- Gsref
+
+#daily PET kg/m2/s = 86400mm/day
+PETpm_mmday <- 86400 * ( delta*df_AMF_USMMS$Rn + rho_a*cp*ga*df_AMF_USMMS$VPD ) / (( delta + gamma*(1+(ga/Gsref))) * Lv)                             
+df_AMF_USMMS$PETpm_mmday <- PETpm_mmday #P-M PET mm/day
+
+#weekly PET in inch (1mm = 0.0393701 inch)
+PETpm_inweek <- PETpm_mmday * 7 * 0.03937 
+df_AMF_USMMS$PETpm_inweek <- PETpm_inweek #P-M PET inch/week
+
+#Prestley-Tylor PET
+PETpt_mmday <- 1.26 * delta*df_AMF_USMMS$Rn / (Lv * (delta + gamma)) * 86400
+df_AMF_USMMS$PETpt_mmday <- PETpt_mmday # Priestley-Taylor PET mm/day
+PETpt_inweek <- PETpt_mmday * 7 * 0.03937
+df_AMF_USMMS$PETpt_inweek <- PETpt_inweek # Priestley-Taylor PET inch/week
+
+#Calculate Penman-Monteith ET
+ETpm_mmday <- 86400 * (delta*df_AMF_USMMS$Rn + rho_a*cp*ga*df_AMF_USMMS$VPD) / (( delta + gamma*(1+(ga/Gs))) * Lv)
+ETpm_inweek <- ETpm_mmday * 7 * 0.03937 #inch/week
+df_AMF_USMMS$ETpm_mmday <- ETpm_mmday
+df_AMF_USMMS$ETpm_inweek <- ETpm_inweek 
+
+#Save Dataframe
+write.csv(df_AMF_USMMS,file = "D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US_MMS.csv",row.names = FALSE)
+
+US_MMS_ET <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US_MMS.csv")
+
+
+
+
+
+###########################
+
+
+
+
+
 
 
 
