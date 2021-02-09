@@ -194,7 +194,7 @@ ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
        x = "Month",
        y = "ET Averaged (in/wk)")
 
-
+#Shows overall trendline
 library(ggplot2)
 library(scales)
 ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
@@ -207,3 +207,42 @@ ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
        y = "ET Averaged (in/wk)") +
   theme_minimal()
 
+#Average weeks over all years, months, weeks for average ET
+YearlyETAverages <- US_MMS_ET %>% group_by(Year) %>%
+  summarise_if(is.numeric,mean,na.rm=TRUE)
+
+str(YearlyETAverages)
+
+#Remove 1998 since it has very little data and scews the graph
+YearlyETAverages1 = YearlyETAverages[-c(1),]
+
+View(YearlyETAverages1)
+
+# Plot
+# Approach 2:
+library(ggfortify)
+library(reshape2)
+axisyears <- c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014")       
+
+ggplot(YearlyETAverages1) + geom_line(aes(x=Year, y=ETpm_inweek, color="ETpm_inweek")) + 
+  geom_line(aes(x=Year, y=VPD, col="VPD")) + 
+  scale_color_discrete(name="Legend") + 
+  labs(title="Annual Average ET (calculated from in/week)", subtitle = "US-MMS Site (1999-2014)", x="Year", y="ET Averaged from inches per week") +
+  
+
+  #scale_x_discrete(breaks=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"),
+#  axisyears <- c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014")       
+#scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16),
+ #                labels=  c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014"))
+#theme(axis.text.x = element_text(angle = 90)).
+
+#Each year has very different average ET and VPD rates - why is this?
+
+MonthlyETAverages <- US_MMS_ET %>% group_by(Month) %>%
+  summarise_if(is.numeric,mean,na.rm=TRUE)
+
+
+WeeklyETAverages <- US_MMS_ET %>% group_by(WeekID) %>%
+  summarise_if(is.numeric,mean,na.rm=TRUE)
+
+View(WeeklyETAverages)
