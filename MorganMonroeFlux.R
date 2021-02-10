@@ -236,9 +236,64 @@ US_MMS_ET <- read.csv("D:/Research/R_Files/Morgan_Monroe_Flux_Tower/AMF_US_MMS.c
 
 
 
+library(ggplot2)
+ggplot(US_MMS_ET, aes(x = Month, y = ETpm_inweek)) +
+  geom_line() +
+  labs(title = "ET Weekly Averages from 1990-2020",
+       x = "Month",
+       y = "ET Averaged (in/wk)")
 
+
+ggplot(US_MMS_ET, aes(x = Year, y = ETpm_inweek)) +
+  geom_line() +
+  labs(title = "ET Weekly Averages from 1990-2020",
+       x = "Year",
+       y = "ET Averaged (in/wk)")
 
 ###########################
+#Next Step:
+
+#How to forecast it:
+#machine learning (Mallory) vs mechanistic (Sander)
+
+#Sander: simple model for conductance at the canopy scale
+
+#Kesondra and Qing
+#provide minimal model for surface conductance for daily scale
+#provide all the other variables in columns 
+#windspeed forecasting from NEON?
+#if WS is not available
+
+
+#Data being procided from EFI
+#35 day forecast from NOAA
+
+#humidity, temp, precip?
+#Are the LE and NEE gap filled?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
