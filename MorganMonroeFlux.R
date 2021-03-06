@@ -301,12 +301,6 @@ ggplot(US_MMS_ET, aes(x = Year, y = ETpm_inweek)) +
 
 
 ############################
-
-
-
-
-
-
 #FluxNet 2015 DATA
 #Goal: Calculate ET from FluxNet 2015 Data using the Penman Monteith Method
 
@@ -540,7 +534,7 @@ ggplot(YearlyETAverages1) + geom_line(aes(x=Year, y=ETpm_inweek, color="ETpm_inw
   labs(title="Annual Average ET (calculated from in/week)", subtitle = "US-MMS Site (1999-2014)", x="Year", y="ET Averaged from inches per week") +
   
 
-  #scale_x_discrete(breaks=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"),
+#scale_x_discrete(breaks=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"),
 #  axisyears <- c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014")       
 #scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16),
  #                labels=  c("1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014"))
