@@ -265,7 +265,7 @@ ggplot(US_MMS_ET, aes(x = Year, y = ETpm_inweek)) +
 #if WS is not available
 
 
-#Data being procided from EFI
+#Data being provided from EFI
 #35 day forecast from NOAA
 
 #humidity, temp, precip?
